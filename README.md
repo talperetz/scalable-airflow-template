@@ -1,5 +1,5 @@
+# Python CLI Template
 
-#Python CLI Template
 This template uses
 <p align="center">
   <a href="https://typer.tiangolo.com"><img src="https://typer.tiangolo.com/img/logo-margin/logo-margin-vector.svg" alt="Typer"></a>

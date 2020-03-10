@@ -1,3 +1,4 @@
 {
-  "command_name": "run"
+  "command_name": "run",
+  "ecr_uri": "xxxx.dkr.ecr.xxxx.amazonaws.com"
 }

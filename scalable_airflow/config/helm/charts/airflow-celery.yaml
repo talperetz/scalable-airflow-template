@@ -1,0 +1,248 @@
+#`dags_volume_claim` or `dags_volume_host` or `dags_in_image` or `git_repo and git_branch and git_dags_folder_mount_point`
+airflow:
+  extraConfigmapMounts: []
+  extraEnv:
+  fernetKey: "{{cookiecutter.fernet_key}}"
+  service:
+    annotations: {}
+    sessionAffinity: "None"
+    sessionAffinityConfig: {}
+    type: ClusterIP
+    externalPort: 8080
+    nodePort:
+      http:
+  executor: Celery
+  initRetryLoop: 3
+  image:
+    repository: {{cookiecutter.airflow_image_repository}}
+    tag: latest
+    pullPolicy: Always
+    pullSecret:
+  schedulerNumRuns: "-1"
+  schedulerDoPickle: true
+  webReplicas: 1
+  config:
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: true
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: True
+    AIRFLOW__WEBSERVER__WORKERS: 10
+    AIRFLOW__KUBERNETES__WORKER_CONTAINER_REPOSITORY: {{cookiecutter.airflow_image_repository}}
+    AIRFLOW__KUBERNETES__WORKER_CONTAINER_TAG: latest
+    AIRFLOW__KUBERNETES__WORKER_CONTAINER_IMAGE_PULL_POLICY: Always
+    AIRFLOW__KUBERNETES__NAMESPACE: airflow
+    AIRFLOW__KUBERNETES__DAGS_VOLUME_CLAIM: airflow-dags
+    AIRFLOW__KUBERNETES__GIT_REPO: {{cookiecutter.git_repo_to_sync_dags}}
+    AIRFLOW__KUBERNETES__GIT_BRANCH: master
+    AIRFLOW__KUBERNETES__GIT_SUBPATH: dags
+    AIRFLOW__KUBERNETES__GIT_SYNC_CREDENTIALS_SECRET: git-credentials
+    AIRFLOW__KUBERNETES__GIT_SYNC_CONTAINER_REPOSITORY: k8s.gcr.io/git-sync
+    AIRFLOW__KUBERNETES__GIT_SYNC_CONTAINER_TAG: v3.1.1
+    AIRFLOW__KUBERNETES__GIT_SYNC_INIT_CONTAINER_NAME: git-sync-clone
+    AIRFLOW__KUBERNETES__GIT_DAGS_FOLDER_MOUNT_POINT: /usr/local/airflow/dags
+
+  podDisruptionBudgetEnabled: true
+  podDisruptionBudget:
+    maxUnavailable: 1
+  connections: []
+  variables: {}
+  pools: {}
+  podAnnotations: {}
+  extraInitContainers: []
+  extraContainers:
+  - name: git-sync-clone
+    image: k8s.gcr.io/git-sync:v3.1.2
+    imagePullPolicy: IfNotPresent
+    envFrom:
+    - configMapRef:
+        name: airflow-gitsync
+    - secretRef:
+        name: git-credentials
+    volumeMounts:
+    - mountPath: /git
+      name: airflow-dags
+  extraVolumeMounts:
+  - name: airflow-dags
+    mountPath: /usr/local/airflow/dags
+    readOnly: true
+  extraVolumes:
+  - name: airflow-dags
+    emptyDir: {}
+  initdb: true
+
+
+scheduler:
+  resources: {}
+  labels: {}
+  podAnnotations: {}
+  annotations: {}
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+flower:
+  enabled: true
+  urlPrefix: "/airflow/flower"
+  resources: {}
+  labels: {}
+  annotations: {}
+  service:
+    annotations: {}
+    type: ClusterIP
+    externalPort: 5555
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  extraConfigmapMounts: []
+
+web:
+  baseUrl: "http://localhost:8080"
+  resources: {}
+  labels: {}
+  annotations: {}
+  podAnnotations: {}
+  initialStartupDelay: "30"
+  initialDelaySeconds: "360"
+  minReadySeconds: 120
+  readinessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 5
+  livenessProbe:
+    periodSeconds: 60
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 5
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  secretsDir: /var/airflow/secrets
+  secrets: []
+
+workers:
+  enabled: true
+  replicas: 2
+  terminationPeriod: 30
+  resources: {}
+  labels: {}
+  annotations: {}
+  podAnnotations: {}
+  celery:
+    instances: 5
+    gracefullTermination: true
+  secretsDir: /var/airflow/secrets
+  secrets: []
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+ingress:
+  enabled: false
+  web:
+    path: "/airflow"
+    host: ""
+    annotations: {}
+    livenessPath:
+    tls:
+      enabled: false
+    precedingPaths:
+    succeedingPaths:
+
+  flower:
+    path: ""
+    livenessPath: /
+    host: ""
+    annotations: {}
+    tls:
+      enabled: false
+
+persistence:
+  enabled: false
+  accessMode: ReadWriteMany
+  size: 2Gi
+
+logsPersistence:
+  enabled: false
+  accessMode: ReadWriteMany
+  size: 2Gi
+
+dags:
+  path: /usr/local/airflow/dags
+  doNotPickle: false
+  git:
+    url: {{cookiecutter.git_repo_to_sync_dags}}
+    ref: master
+    secret: "generic git-sync-secret"
+    repoHost: "github.com"
+    privateKeyName: "id_rsa"
+    gitSync:
+      enabled: false
+      image:
+        repository: alpine/git
+        tag: 1.0.7
+        pullPolicy: IfNotPresent
+      refreshTime: 60s
+  initContainer:
+    enabled: false
+    image:
+      repository: alpine/git
+      tag: 1.0.7
+      pullPolicy: IfNotPresent
+    installRequirements: true
+
+logs:
+  path: /usr/local/airflow/logs
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: airflow-service-account
+  annotations: {}
+
+
+## ref: https://github.com/kubernetes/charts/blob/master/stable/postgresql/README.md
+postgresql:
+  enabled: true
+    existingSecret: airflow-secrests
+    existingSecretKey: postgresql
+  service:
+    port: 5432
+  postgresqlUsername: postgres
+  postgresqlPassword: airflow
+  postgresqlDatabase: airflow
+  persistence:
+    enabled: true
+    accessModes:
+    - ReadWriteOnce
+
+
+## ref: https://github.com/kubernetes/charts/blob/master/stable/redis/README.md
+redis:
+  enabled: true
+  existingSecret:
+  existingSecretKey: redis-password
+  password: airflow
+  master:
+    persistence:
+      enabled: false
+      accessModes:
+      - ReadWriteOnce
+  cluster:
+    enabled: false
+
+# Enable this if you're using https://github.com/coreos/prometheus-operator
+# Don't forget you need to install something like https://github.com/epoch8/airflow-exporter in your airflow docker container
+serviceMonitor:
+  enabled: false
+  interval: "30s"
+  path: /admin/metrics
+  selector:
+    prometheus: kube-prometheus
+
+prometheusRule:
+  enabled: false
+  groups: {}
+  additionalLabels: {}
+extraManifests: []

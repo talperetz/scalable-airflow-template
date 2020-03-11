@@ -1,4 +1,12 @@
 {
-  "command_name": "run",
-  "ecr_uri": "xxxx.dkr.ecr.xxxx.amazonaws.com"
+  "airflow_executor": [
+    "Kubernetes",
+    "Celery"
+  ],
+  "local_airflow_image_name": "xxxxx/airflow",
+  "airflow_image_repository": "puckel/docker-airflow",
+  "git_repo_to_sync_dags": "https://github.com/xxxxxx/flows.git",
+  "git_username_in_base_64": "2NTTi6bOy",
+  "git_password_in_base_64": "laTQudhlZe2NTTi6bOyV",
+  "fernet_key": "sS_tNRk3JhlaTQudhlZe2NTTi6bOyVkZTJSHsz4Z13Q="
 }

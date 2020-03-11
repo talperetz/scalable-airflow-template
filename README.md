@@ -17,7 +17,7 @@
 ## Installation
 
 ```console
-$ cookiecutter https://github.com/talperetz/airflow-kube-template
+$ cookiecutter https://github.com/talperetz/scalable-airflow-template
 
 ```
 
